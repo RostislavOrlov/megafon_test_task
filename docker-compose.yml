@@ -1,0 +1,44 @@
+version: '3.9'
+
+services:
+  postgres_megafon:
+    image: postgres
+    restart: always
+    container_name: megafon_postgres
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
+    environment:
+      - 'POSTGRES_USER=postgres'
+      - 'POSTGRES_PASSWORD=12345'
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -p 5432 -U postgres -d megafon"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./postgres_volume:/var/lib/postgresql/data/
+    networks:
+      - megafon
+
+  app:
+    container_name: megafon_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    links:
+      - postgres_megafon
+    ports:
+      - 8090:8080
+    depends_on:
+      postgres_megafon:
+        condition: service_healthy
+    command: bash -c "python3 -u main.py"
+    networks:
+      - megafon
+
+networks:
+  megafon:
+    name: megafon
